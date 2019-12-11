@@ -36,7 +36,7 @@ function Test-FirewallRulePresence {
 
     try {
         if (!(Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue)) {
-            Write-Host "Creating firewall rule called $RuleName"
+            Write-Host "[+] Creating firewall rule called $RuleName"
             New-NetFirewallRule -DisplayName $RuleName -Enabled False -Profile Any -Direction Inbound -Action Block | Out-Null
         }
     }
@@ -55,6 +55,7 @@ function Start-GeoFence {
         [string]$ConfigPath
     )
 
+    Write-Host "[+] Loading PSGeoFence configuration"
     # Import configuration
     try {
         $Config = Get-Content $ConfigPath | ConvertFrom-Json
@@ -63,6 +64,7 @@ function Start-GeoFence {
         Write-Error "Unable to parse configuration file JSON, please check that your JSON is valid"
     }
 
+    Write-Host "[+] Importing filters"
     # Initial import of filters and ensuring named firewall rule is present. 
     $Filters = Import-Filters -FilterPath $Config.FilterPath
     Test-FirewallRulePresence -RuleName $Config.FirewallRuleName
@@ -78,6 +80,7 @@ function Start-GeoFence {
     # Counter used to determine when filters need to be updated
     $UpdateFiltersCounter = 0
 
+    Write-Host "[+] Starting PSGeoFence"
     while ($true) {
 
         # Filters are updated every 10 loops
@@ -99,12 +102,12 @@ function Start-GeoFence {
             }
         }
 
-        $FilterMatches | Format-Table -AutoSize
+        # $FilterMatches | Format-Table -AutoSize
 
         if ($FilterMatches.Count -ge 1) {
 
             foreach ($Match in $FilterMatches) {
-                Write-Host (get-date).toString() ": Blocking $($Match.RemoteAddress) ($($Match.CountryName)) for the connection to $($Match.LocalAddress):$($Match.LocalPort) via $($Match.Protocol) by $($Match.ProcPath)"
+                Write-Host (get-date).toString() ": Blocking $($Match.RemoteAddress) ($($Match.CountryName)) for the connection to $($Match.LocalAddress):$($Match.LocalPort) using process $($Match.ProcPath)"
 
                 $BlockedIPs = [array](Get-NetFirewallRule -DisplayName $Config.FirewallRuleName | Get-NetFirewallAddressFilter ).RemoteAddress
 
@@ -122,7 +125,7 @@ function Start-GeoFence {
                     $EnableFirewall = $false
                 }
 
-                Write-Host "Local Address $($Match.LocalAddress)", "Local Port $($Match.LocalPort)", "Remote Address $($Match.RemoteAddress)", "Remote Port $($Match.RemotePort)"
+                # Write-Host "Local Address $($Match.LocalAddress)", "Local Port $($Match.LocalPort)", "Remote Address $($Match.RemoteAddress)", "Remote Port $($Match.RemotePort)"
                 Start-Process -FilePath $Config.CportsPath -ArgumentList "/close","$($Match.LocalAddress)","$($Match.LocalPort)","$($Match.RemoteAddress)","$($Match.RemotePort)" -Wait
             }
         }
