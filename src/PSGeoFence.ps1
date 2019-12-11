@@ -82,16 +82,15 @@ function Start-GeoFence {
 
         # Filters are updated every 10 loops
         $UpdateFiltersCounter ++
-        Write-Host "Counter: $UpdateFiltersCounter"
 
         if ($UpdateFiltersCounter -ge 10) {
-            Write-Host "Updating filters"
+            Write-Verbose "Updating filters"
             $Filters = Import-Filters -FilterPath $Config.FilterPath
             $UpdateFiltersCounter = 0
         }
   
         $Connections = netstat -n -o
-        $Connections = [array](($Connections[4..($Connections.length - 1)] -replace "\s+", " " -replace ":", " ").trim() | ConvertFrom-Csv -Delimiter " " -Header Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID | where { $_.RemoteAddress -notmatch '^10.|^192.168.|(^172.[0-2]|3[0-2])|127.0.0.1|::|0.0.0.0' } | select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID, $CC, $CN, $ProcPath)
+        $Connections = [array](($Connections[4..($Connections.length - 1)] -replace "\s+", " " -replace ":", " ").trim() | ConvertFrom-Csv -Delimiter " " -Header Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID | where { $_.RemoteAddress -notmatch '^10.|^192.168.|(^172.[0-2]|3[0-2])|127.0.0.1|\[|\]|0.0.0.0' } | select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID, $CC, $CN, $ProcPath)
 
         $FilterMatches = [System.Collections.ArrayList]@()
         $Filters | ForEach-Object {
@@ -100,7 +99,7 @@ function Start-GeoFence {
             }
         }
 
-        $FilterMatches | ft
+        $FilterMatches | Format-Table -AutoSize
 
         if ($FilterMatches.Count -ge 1) {
 
