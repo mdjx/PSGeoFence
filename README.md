@@ -16,6 +16,8 @@ Lastly, this will only prevent inbound connections. If you have a local service 
 1. A copy of the [MaxMind GeoLite2 Country database](https://dev.maxmind.com/geoip/geoip2/geolite2/) in MaxMind DB format. 
 1. A copy of the [CurrPorts](https://www.nirsoft.net/utils/cports.html) application. 
 
+A short guide on points 1 and 2 can be found [here](https://xkln.net/blog/exploring-ip-geolocation-with-powershell/).
+
 ## Installation
 
 Clone the repository and run `build.ps1 deploy`. 
