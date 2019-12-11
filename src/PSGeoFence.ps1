@@ -58,7 +58,7 @@ function Start-GeoFence {
     Write-Host "[+] Loading PSGeoFence configuration"
     # Import configuration
     try {
-        $Config = Get-Content $ConfigPath | ConvertFrom-Json
+        $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
     }
     catch {
         Write-Error "Unable to parse configuration file JSON, please check that your JSON is valid"
