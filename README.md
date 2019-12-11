@@ -56,6 +56,8 @@ Available parameters are
 
 Comments can be used in the file to describe the purpose of each filter. 
 
+Please note that while filters can be quite granular, what gets added to the firewall rule is always the remote IP. For example, if your filter matches port 443 from non-US IP space, any non-US IPs connecting to port 443 will be added to the firewall rule and will no longer be able to reach **any** ports on the host.
+
 ### Configuration file
 
 The configuration file is a JSON file that points to various prerequisites and configures options such as the name of the firewall rule.
