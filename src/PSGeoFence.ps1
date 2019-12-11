@@ -10,7 +10,7 @@ function Import-Filters {
     )
 
     try {
-        $FilterData = Get-Content $FilterPath
+        $FilterData = Get-Content $FilterPath | Where-Object {$_ -notmatch "^#"}
         $Filters = [System.Collections.ArrayList]@()
   
         $FilterData | ForEach-Object {
@@ -37,11 +37,11 @@ function Test-FirewallRulePresence {
     try {
         if (!(Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue)) {
             Write-Host "Creating firewall rule called $RuleName"
-            New-NetFirewallRule -DisplayName $RuleName -Enabled False -Profile Any -Direction Outbound -Action Block | Out-Null
+            New-NetFirewallRule -DisplayName $RuleName -Enabled False -Profile Any -Direction Inbound -Action Block | Out-Null
         }
     }
     catch {
-        Write-Error "Unable to create firewall rule, please ensure the windows firewall service is running and that you are running in an elevated prompt."
+        Write-Error "Unable to create firewall rule, please ensure the windows firewall service is running and that you are running an elevated PowerShell session."
     }
 }
 
@@ -66,6 +66,8 @@ function Start-GeoFence {
     # Initial import of filters and ensuring named firewall rule is present. 
     $Filters = Import-Filters -FilterPath $Config.FilterPath
     Test-FirewallRulePresence -RuleName $Config.FirewallRuleName
+    
+    # Flag used to check whether the rule needs to be enabled. An empty Block rule will block Any/Any. 
     $EnableFirewall = $false
 
     # Set variables for calculated properties
@@ -75,16 +77,14 @@ function Start-GeoFence {
 
     # Counter used to determine when filters need to be updated
     $UpdateFiltersCounter = 0
-    $Runcounter = 1
 
     while ($true) {
 
-        Write-Host "Run counter at $Runcounter"
-        $FilterMatches = [System.Collections.ArrayList]@()
-
         # Filters are updated every 10 loops
+        $UpdateFiltersCounter ++
+        Write-Host "Counter: $UpdateFiltersCounter"
 
-        if ($UpdateFiltersCounter -ge 9) {
+        if ($UpdateFiltersCounter -ge 10) {
             Write-Host "Updating filters"
             $Filters = Import-Filters -FilterPath $Config.FilterPath
             $UpdateFiltersCounter = 0
@@ -93,6 +93,7 @@ function Start-GeoFence {
         $Connections = netstat -n -o
         $Connections = [array](($Connections[4..($Connections.length - 1)] -replace "\s+", " " -replace ":", " ").trim() | ConvertFrom-Csv -Delimiter " " -Header Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID | where { $_.RemoteAddress -notmatch '^10.|^192.168.|(^172.[0-2]|3[0-2])|127.0.0.1|::|0.0.0.0' } | select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID, $CC, $CN, $ProcPath)
 
+        $FilterMatches = [System.Collections.ArrayList]@()
         $Filters | ForEach-Object {
             foreach ($Connection in $Connections | Where-Object $_.InvokeReturnAsIs()) {
                 [void]$FilterMatches.Add($Connection)
@@ -108,7 +109,7 @@ function Start-GeoFence {
 
                 $BlockedIPs = [array](Get-NetFirewallRule -DisplayName $Config.FirewallRuleName | Get-NetFirewallAddressFilter ).RemoteAddress
 
-                if ($BlockedIPs.Count -eq 0) {
+                if ($BlockedIPs -eq "Any") {
                     $EnableFirewall = $true
                 }
 
@@ -124,13 +125,10 @@ function Start-GeoFence {
 
                 Write-Host "Local Address $($Match.LocalAddress)", "Local Port $($Match.LocalPort)", "Remote Address $($Match.RemoteAddress)", "Remote Port $($Match.RemotePort)"
                 Start-Process -FilePath $Config.CportsPath -ArgumentList "/close","$($Match.LocalAddress)","$($Match.LocalPort)","$($Match.RemoteAddress)","$($Match.RemotePort)" -Wait
-
             }
         }
 
-        $UpdateFiltersCounter ++
-        $Runcounter++
-        Start-Sleep -milliseconds 500
+        Start-Sleep -Milliseconds 500
 
     }
 }
