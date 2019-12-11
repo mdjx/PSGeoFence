@@ -32,7 +32,7 @@ You will need to create two additional files:
 
 This is simply a text file located anywhere on the system (the location will be referenced in the configuration file) that contains script blocks as strings. These strings will determine what connections are blocked. Each line is a filter and the syntax is identical to `Where-Object` script blocks. 
 
-Available paramaters are
+Available parameters are
 - LocalAddress
 - LocalPort
 - RemoteAddress
@@ -49,6 +49,7 @@ Available paramaters are
 ```powershell
 # Block inbound HTTPS connections from countries other than Australia
 {($_.LocalPort -eq 443) -and ($_.CountryCode -ne "AU")}
+
 # Block any connections to Service.exe from countries other than Australia and New Zealand
 {($_.CountryCode -match "AU|NZ") -and ($_.ProcPath -match "Service.exe")}
 ```
@@ -57,7 +58,7 @@ Comments can be used in the file to describe the purpose of each filter.
 
 ### Configuration file
 
-The configuration file is a JSON file that points to various preequisites and configures options such as the name of the firewall rule.
+The configuration file is a JSON file that points to various prerequisites and configures options such as the name of the firewall rule.
 
 **Example File**
 
@@ -70,7 +71,7 @@ The configuration file is a JSON file that points to various preequisites and co
 }
 ```
 
-## Running PSGeoFilter
+## Running PSGeoFence
 
 ```powershell
 Import-Module PSGeoFence
@@ -78,4 +79,3 @@ Start-GeoFence -ConfigPath C:\Tools\PSGeoFence\config\config.json
 ```
 
 `Start-GeoFence` will import the configuration data and start a loop continually checks for connections matching the supplied filters. The remote IP of these connections is added to the firewall rule, and the connection is terminated. 
-
