@@ -73,7 +73,7 @@ function Start-GeoFence {
     $EnableFirewall = $false
 
     # Set variables for calculated properties
-    $ProcPath = @{Label = "ProcPath"; Expression = { (Get-Process -PID $_.PID | Select Path).Path } }
+    $ProcPath = @{Label = "ProcPath"; Expression = { (Get-Process -PID $_.OwningProcess | Select Path).Path } }
     $CC = @{Label = "CountryCode"; Expression = { (Get-GeoLocation -IPAddress $_.RemoteAddress -Path $Config.GeoLite2Path).CountryCode } }
     $CN = @{Label = "CountryName"; Expression = { (Get-GeoLocation -IPAddress $_.RemoteAddress -Path $Config.GeoLite2Path).CountryName } }
 
@@ -92,8 +92,7 @@ function Start-GeoFence {
             $UpdateFiltersCounter = 0
         }
   
-        $Connections = netstat -n -o
-        $Connections = [array](($Connections[4..($Connections.length - 1)] -replace "\s+", " " -replace ":", " ").trim() | ConvertFrom-Csv -Delimiter " " -Header Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID | where { $_.RemoteAddress -notmatch '^10.|^192.168.|(^172.[0-2]|3[0-2])|127.0.0.1|\[|\]|0.0.0.0' } | select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, PID, $CC, $CN, $ProcPath)
+        $Connections = Get-NetTCPConnection -AppliedSetting Internet | Where { $_.RemoteAddress -notmatch '^10.|^192.168.|(^172.[0-2]|3[0-2])|127.0.0.1|\[|\]|0.0.0.0' } | Select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, OwningProcess, $CC, $CN, $ProcPath
 
         $FilterMatches = [System.Collections.ArrayList]@()
         $Filters | ForEach-Object {
@@ -107,7 +106,12 @@ function Start-GeoFence {
         if ($FilterMatches.Count -ge 1) {
 
             foreach ($Match in $FilterMatches) {
-                Write-Host (get-date).toString() ": Blocking $($Match.RemoteAddress) ($($Match.CountryName)) for the connection to $($Match.LocalAddress):$($Match.LocalPort) using process $($Match.ProcPath)"
+
+                if ($Match.ProcPath) {
+                    $Process = " using process $($Match.ProcPath)"
+                } else {$Process = ""}
+
+                Write-Host (Get-Date).toString() ": Blocking $($Match.RemoteAddress) ($($Match.CountryName)) for the connection to $($Match.LocalAddress):$($Match.LocalPort)$Process"
 
                 $BlockedIPs = [array](Get-NetFirewallRule -DisplayName $Config.FirewallRuleName | Get-NetFirewallAddressFilter ).RemoteAddress
 
