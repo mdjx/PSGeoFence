@@ -92,7 +92,7 @@ function Start-GeoFence {
             $UpdateFiltersCounter = 0
         }
   
-        $Connections = Get-NetTCPConnection -AppliedSetting Internet | Where { $_.RemoteAddress -notmatch '^10.|^192.168.|(^172.[0-2]|3[0-2])|127.0.0.1|\[|\]|0.0.0.0' } | Select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, OwningProcess, $CC, $CN, $ProcPath
+        $Connections = Get-NetTCPConnection -AppliedSetting Internet | Where { $_.RemoteAddress -notmatch '^10\.|^172\.([0-2]|3[0-2])\.|^192\.168\.|127\.0\.0\.1|\[|\]|0\.0\.0\.0' } | Select Protocol, LocalAddress, LocalPort, RemoteAddress, RemotePort, State, OwningProcess, $CC, $CN, $ProcPath
 
         $FilterMatches = [System.Collections.ArrayList]@()
         $Filters | ForEach-Object {
